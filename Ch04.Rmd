@@ -103,8 +103,8 @@ In this scenario, our likelihoods are
 
 $$
 \begin{align}
-Y_1|\mu_1,\sigma&\sim N(\mu_1,\sigma_1^2)\\
-Y_2|\mu_2,\sigma&\sim N(\mu_2,\sigma_2^2)
+Y_1|\mu_1,\sigma_1&\sim N(\mu_1,\sigma_1^2)\\
+Y_2|\mu_2,\sigma_2&\sim N(\mu_2,\sigma_2^2)
 \end{align}
 $$
 
