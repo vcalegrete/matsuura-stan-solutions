@@ -34,8 +34,13 @@ boxplot(Y1, Y2, names=c("Y1", "Y2"), horizontal=TRUE)
 <i>Solution</i>
 
 With the assumption that $\text{Var}(Y_1)=\text{Var}(Y_2)$, then our likelihoods (under flat priors for $\mu_1,\mu_2,\sigma$) are
-$$Y_1|\mu_1,\sigma\sim N(\mu_1,\sigma^2)$$
-$$Y_2|\mu_2,\sigma\sim N(\mu_2,\sigma^2)$$
+$$
+\begin{align}
+Y_1|\mu_1,\sigma&\sim N(\mu_1,\sigma^2)\\
+Y_2|\mu_2,\sigma&\sim N(\mu_2,\sigma^2)
+\end{align}
+$$
+
 We will build posterior distributions for both means in the next two subproblems.
 
 (3) Create the model file of (2) in Stan and estimate the parameters. Don’t use <tt>generated quantities</tt> block here yet, because in the next (4) we will be practicing how to make use of draws from R or Python.
@@ -63,17 +68,21 @@ model {
 
 (4) Compute Prob[μ1 < μ2] from the obtained draws using R or Python (hint: we can count how many times the event μ1 < μ2 occurs in the entire draws, and divide this quantity by the total number of draws).
 
-<i>Solution</i> We run the model in STAN, generate our posterior draws, and display the model summary.
+<i>Solution</i> We run the model in STAN, generate our posterior draws, and display the model summary. I had to play around with <tt>seed</tt> until finding one that didn't initialize $\sigma$ at 0. Also, I suppressed the chain iteration updates with <tt>refresh = 0</tt> once I found a good seed. 
 
 ```{r}
 library(cmdstanr)
 data <- list(N1=N1, N2=N2, Y1=Y1, Y2=Y2)
 # model3 <- cmdstan_model(stan_file='model3.stan')
-fit <- model3$sample(data=data, seed=200)
+fit <- model3$sample(
+  data = data, 
+  seed = 42,
+  refresh = 0
+)
 fit$cmdstan_summary()
 ```
 
-Now, we store the posterior draws into a data frame and compute $\text{Prob}[\mu_1 < \mu_2]$ as relative frequency:
+MCMC convergence looks good: <tt>R_hat</tt> is $<1.1$ and <tt>ESS_bulk</tt> $>100$ for all parameters. Therefore, we keep the posterior draws, store them into a data frame, and compute $\text{Prob}[\mu_1 < \mu_2]$ empirically:
 
 ```{r}
 draws <- data.frame(fit$draws())
@@ -84,6 +93,65 @@ prob = (sum(draws$X1.mu1 < draws$X1.mu2) +
 prob
 ```
 
-So the posterior probability that $\mu_1 < \mu_2$ is approximately $92.35\%$. 
+So the posterior probability that $\mu_1 < \mu_2$ is approximately $92.75\%$. 
 
-(5) Write a model formula with the assumption that the two SDs are different. This is equivalent to the Welch’s t-test. Similarly, compute Prob[μ1 < μ2]. 
+(5) Write a model formula with the assumption that the two SDs are different. This is equivalent to the Welch’s t-test. Similarly, compute Prob[μ1 < μ2].
+
+<i>Solution</i> 
+
+In this scenario, our likelihoods are
+
+$$
+\begin{align}
+Y_1|\mu_1,\sigma&\sim N(\mu_1,\sigma_1^2)\\
+Y_2|\mu_2,\sigma&\sim N(\mu_2,\sigma_2^2)
+\end{align}
+$$
+
+We make the necessary adjustments to our model file:
+
+```{stan output.var="model5"}
+data {
+  int N1;
+  int N2;
+  vector[N1] Y1;
+  vector[N2] Y2;
+}
+
+parameters {
+  real mu1;
+  real mu2;
+  real<lower=0> sigma1;
+  real<lower=0> sigma2;
+}
+
+model {
+  Y1 ~ normal(mu1, sigma1);
+  Y2 ~ normal(mu2, sigma2);
+}
+
+```
+
+Then recompile, refit, and check convergence:
+
+```{r}
+fit2 <- model5$sample(
+  data = data, 
+  seed = 42,
+  refresh = 0
+)
+fit2$cmdstan_summary()
+```
+
+MCMC diagnostics look good, so we retain the samples and use them to empirically compute the posterior probability:
+
+```{r}
+draws2 <- data.frame(fit2$draws())
+prob2 = (sum(draws2$X1.mu1 < draws2$X1.mu2) +
+         sum(draws2$X2.mu1 < draws2$X2.mu2) +
+         sum(draws2$X3.mu1 < draws2$X3.mu2) +
+         sum(draws2$X4.mu1 < draws2$X4.mu2) ) / 4000
+prob2
+```
+
+Therefore, $\text{Prob}(\mu_1<\mu_2|Y_1,Y_2)\approx 93.38\%$. This is an improvement on our initial t-test, suggesting that model specification plays an important role in getting the best results possible.
