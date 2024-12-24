@@ -34,6 +34,7 @@ boxplot(Y1, Y2, names=c("Y1", "Y2"), horizontal=TRUE)
 <i>Solution</i>
 
 With the assumption that $\text{Var}(Y_1)=\text{Var}(Y_2)$, then our likelihoods (under flat priors for $\mu_1,\mu_2,\sigma$) are
+
 $$
 \begin{align}
 Y_1|\mu_1,\sigma&\sim N(\mu_1,\sigma^2)\\
